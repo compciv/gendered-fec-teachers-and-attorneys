@@ -1,25 +1,18 @@
+
+from os import makedirs
 from os.path import join
-import json
-WRANGLED_DATA_FILENAME = join('tempdata', 'babynames', 'wrangledbabynames.json')
-# boy this is bad practice...but it's fast...
-NAMES_DATA_ROWS = json.load(open(WRANGLED_DATA_FILENAME))
+from shutil import unpack_archive
+from csv import DictReader, DictWriter
+from gender import detect_gender
 
-def detect_gender(name):
-    # prepare an empty result just in case the given name is not found in our database
-    result = { 'name': name, 'gender': 'NA', 'ratio': None, 'males': None, 'females': None, 'total': 0 }
-    for row in NAMES_DATA_ROWS:
-        # find first row...
-        if name.lower() == row['name'].lower():
-            # this should be the match
-            result = row
-            # since each name only shows up once in our list
-            # we can break early rather than iterating through the rest of NAMES_DATA_ROWS
-            break
-    # if no match was found, result is what it was at the beginning
-    return result
+ORIGINAL_DATA_DIR = join('tempdata', 'original')
+WRANGLED_DATA_DIR = join('tempdata', 'wrangled')
+CLASSIFIED_DATA_DIR = join('tempdata', 'classified')
+makedirs(CLASSIFIED_DATA_DIR, exist_ok=True)
+DATA_HEADERS_FILENAME = join(ORIGINAL_DATA_DIR, 'indiv_header_file.csv')
 
 
-def get_usable_name(namestr):
+def extract_usable_name(namestr):
     # split into two pieces, at most
     nameparts = namestr.split(', ', 1)
     for nx in nameparts[-1].split(' '):
@@ -31,15 +24,7 @@ def get_usable_name(namestr):
 
 
 
-from os import makedirs
-from os.path import join
-from shutil import unpack_archive
-from csv import DictReader, DictWriter
-ORIGINAL_DATA_DIR = join('tempdata', 'original')
-WRANGLED_DATA_DIR = join('tempdata', 'wrangled')
-CLASSIFIED_DATA_DIR = join('tempdata', 'classified')
-makedirs(CLASSIFIED_DATA_DIR, exist_ok=True)
-DATA_HEADERS_FILENAME = join(ORIGINAL_DATA_DIR, 'indiv_header_file.csv')
+
 original_headers = open(DATA_HEADERS_FILENAME).read().strip().split(',')
 # the classified headers are just the original headers, with 'gender', 'ratio', and 'total'
 classified_headers = original_headers + ['gender', 'ratio', 'total']
@@ -60,7 +45,7 @@ for year in YEARS:
 
     rowcount = 0
     for row in DictReader(infile):
-        usable_name = get_usable_name(row['NAME'])
+        usable_name = extract_usable_name(row['NAME'])
         xresult = detect_gender(usable_name)
         row['gender'] = xresult['gender']
         row['ratio'] = xresult['ratio']
